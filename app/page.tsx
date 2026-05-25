@@ -26,7 +26,7 @@ export default function Home() {
       <section className="flex justify-center px-4 sm:px-8 pb-16 sm:pb-20">
         <div className="flex flex-col md:flex-row gap-5 w-full max-w-[960px]">
           {/* Left info card */}
-          <div className="w-full md:w-[470px] min-h-[200px] md:h-[300px] bg-brand-gradient text-white rounded-2xl p-8 flex flex-col gap-6">
+          <div className="w-full md:w-[470px] min-h-[200px] md:h-[300px] text-brand-gradient rounded-2xl p-8 flex flex-col gap-6">
             <p className="text-[16px] leading-relaxed">
               Masih bingung pilih kuliah atau langsung kerja? Tenang, kamu nggak
               sendirian. Quiz ini dibuat buat bantu kamu lebih ngerti diri
