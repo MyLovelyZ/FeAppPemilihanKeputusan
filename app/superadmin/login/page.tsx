@@ -6,7 +6,7 @@ import Link from "next/link";
 import { adminLogin } from "@/lib/api";
 import { setToken, setUser } from "@/lib/auth";
 
-export default function AdminLoginPage() {
+export default function SuperadminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +21,12 @@ export default function AdminLoginPage() {
       const { token, user } = await adminLogin(email, password);
       setToken(token);
       setUser({ id: user.id, name: user.name, email: user.email, role: user.role });
-      router.push("/admin");
+
+      if (user.role === "superadmin") {
+        router.push("/superadmin/admins");
+      } else {
+        router.push("/admin");
+      }
     } catch {
       setError("Kredensial akun salah atau belum terdaftar.");
     } finally {
@@ -34,7 +39,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-[440px] rounded-3xl overflow-hidden shadow-lg">
         <div className="bg-brand-gradient px-10 py-8 text-center">
           <h1 className="text-white font-bold text-[32px]">Pemilihan</h1>
-          <p className="text-white/75 italic text-[18px]">Admin Panel</p>
+          <p className="text-white/75 italic text-[18px]">Superadmin Panel</p>
         </div>
 
         <div className="bg-white px-10 py-8 flex flex-col gap-5">
@@ -84,7 +89,7 @@ export default function AdminLoginPage() {
               <polyline points="10 17 15 12 10 7" />
               <line x1="15" y1="12" x2="3" y2="12" />
             </svg>
-            {loading ? "Masuk..." : "Masuk sebagai admin"}
+            {loading ? "Masuk..." : "Masuk sebagai superadmin"}
           </button>
 
           {error && (
@@ -100,8 +105,8 @@ export default function AdminLoginPage() {
         </div>
       </div>
 
-      <Link href="/superadmin/login" className="mt-6 text-brand-blue text-[14px] underline hover:opacity-70 transition-opacity">
-        To Superadmin Login
+      <Link href="/admin/login" className="mt-6 text-brand-blue text-[14px] underline hover:opacity-70 transition-opacity">
+        To Admin Login
       </Link>
     </div>
   );

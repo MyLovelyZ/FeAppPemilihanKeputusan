@@ -4,67 +4,102 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AdminSidebar from "@/components/AdminSidebar";
-import { adminGetQuizzes, adminCreateQuiz } from "@/lib/api";
-import { getToken, removeToken } from "@/lib/auth";
-import type { Quiz } from "@/lib/api";
+import { adminGetQuizzes, adminGetQuestions, superadminGetAdmins } from "@/lib/api";
+import { getToken, removeToken, isSuperadmin } from "@/lib/auth";
+
+function StatCard({ label, value, to, loading }: { label: string; value: number; to: string; loading: boolean }) {
+  return (
+    <Link href={to} className="h-[140px] bg-brand-gradient text-white rounded-2xl px-6 py-5 flex flex-col justify-between hover:opacity-90 transition-opacity">
+      <p className="text-white/70 text-[14px]">{label}</p>
+      <p className="text-[48px] font-bold leading-none">
+        {loading ? "—" : value}
+      </p>
+    </Link>
+  );
+}
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [stats, setStats] = useState({ quizzes: 0, questions: 0, admins: 0 });
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     const token = getToken();
     if (!token) { router.push("/admin/login"); return; }
 
-    adminGetQuizzes(token)
-      .then((data) => setQuizzes(data))
-      .catch(() => { removeToken(); router.push("/admin/login"); })
-      .finally(() => setLoading(false));
+    const superadmin = isSuperadmin();
+
+    const load = async () => {
+      try {
+        const [quizzes, questions] = await Promise.all([
+          adminGetQuizzes(token),
+          adminGetQuestions(token),
+        ]);
+        const newStats = {
+          quizzes: quizzes.length,
+          questions: questions.length,
+          admins: 0,
+        };
+        if (superadmin) {
+          const admins = await superadminGetAdmins(token);
+          newStats.admins = admins.length;
+        }
+        setStats(newStats);
+      } catch {
+        removeToken();
+        router.push("/admin/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [router]);
 
-  const handleNewEntry = async () => {
-    const token = getToken();
-    if (!token) return;
-    setCreating(true);
-    try {
-      const quiz = await adminCreateQuiz(token, { title: "Pemilihan Jurusan Atau Kuliah" });
-      router.push(`/admin/quizzes/${quiz.id}`);
-    } catch {
-      setCreating(false);
-    }
-  };
+  const superadmin = isSuperadmin();
 
   return (
     <div className="flex min-h-screen">
       <AdminSidebar />
 
       <main className="flex-1 p-8">
-        <button
-          onClick={handleNewEntry}
-          disabled={creating}
-          className="mb-8 flex items-center gap-2 bg-brand-gradient text-white px-5 py-2.5 rounded-xl text-[15px] hover:opacity-90 transition-opacity disabled:opacity-50"
-        >
-          New Entry <span className="text-[18px] font-bold">+</span>
-        </button>
+        <div className="mb-8">
+          <h1 className="text-brand-blue font-bold text-[28px]">Dashboard</h1>
+          <p className="text-brand-blue/50 text-[15px] mt-1">Selamat datang di Sistem Quiz Pemilihan</p>
+        </div>
 
-        {loading ? (
-          <p className="text-brand-blue/50">Loading...</p>
-        ) : quizzes.length === 0 ? (
-          <p className="text-brand-blue/50">Belum ada quiz. Buat yang pertama!</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {quizzes.map((quiz) => (
-              <Link key={quiz.id} href={`/admin/quizzes/${quiz.id}`}>
-                <div className="h-[280px] bg-brand-gradient text-white rounded-2xl p-6 flex flex-col justify-between hover:opacity-90 transition-opacity cursor-pointer">
-                  <h3 className="text-[20px] font-bold leading-tight">{quiz.title}</h3>
-                  <div className="flex justify-end text-[22px]">→</div>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+          <StatCard label="Total Quiz" value={stats.quizzes} to="/admin/quizzes" loading={loading} />
+          <StatCard label="Total Pertanyaan" value={stats.questions} to="/admin/questions" loading={loading} />
+          {superadmin && (
+            <StatCard label="Total Admin" value={stats.admins} to="/superadmin/admins" loading={loading} />
+          )}
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-6">
+          <h2 className="text-brand-blue font-bold text-[18px] mb-4">Aksi Cepat</h2>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/admin/quizzes/create"
+              className="px-5 py-2.5 bg-brand-gradient text-white rounded-xl text-[14px] hover:opacity-90 transition-opacity"
+            >
+              Buat Quiz Baru
+            </Link>
+            <Link
+              href="/admin/questions/create"
+              className="px-5 py-2.5 border-2 border-brand-blue/30 text-brand-blue rounded-xl text-[14px] hover:border-brand-blue transition-colors"
+            >
+              Buat Pertanyaan
+            </Link>
+            {superadmin && (
+              <Link
+                href="/superadmin/admins/create"
+                className="px-5 py-2.5 border-2 border-brand-blue/30 text-brand-blue rounded-xl text-[14px] hover:border-brand-blue transition-colors"
+              >
+                Tambah Admin
               </Link>
-            ))}
+            )}
           </div>
-        )}
+        </div>
       </main>
     </div>
   );

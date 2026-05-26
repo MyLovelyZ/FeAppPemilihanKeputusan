@@ -2,20 +2,23 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getToken, clearAuth, isSuperadmin } from "@/lib/auth";
+import { getToken, clearAuth } from "@/lib/auth";
 import { adminLogout } from "@/lib/api";
 
 const NAV = [
+  { href: "/superadmin/admins", label: "Manajemen Admin" },
+];
+
+const ADMIN_NAV = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/quizzes", label: "Quizzes" },
   { href: "/admin/questions", label: "Pertanyaan" },
   { href: "/admin/profile", label: "Profil" },
 ];
 
-export default function AdminSidebar() {
+export default function SuperadminSidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const superadmin = isSuperadmin();
 
   const handleLogout = async () => {
     const token = getToken();
@@ -35,10 +38,11 @@ export default function AdminSidebar() {
     <aside className="w-[260px] min-h-screen flex-shrink-0 flex flex-col border-r border-gray-100">
       <div className="bg-brand-gradient px-7 py-6">
         <p className="text-white font-bold text-[22px]">Pemilihan</p>
-        <p className="text-white/70 italic text-[15px]">Admin Panel</p>
+        <p className="text-white/70 italic text-[15px]">Superadmin Panel</p>
       </div>
 
       <nav className="px-5 py-5 flex-1 flex flex-col gap-1">
+        <p className="text-brand-blue/40 text-[11px] uppercase tracking-wider px-4 mb-1">Superadmin</p>
         {NAV.map((item) => (
           <Link
             key={item.href}
@@ -53,31 +57,25 @@ export default function AdminSidebar() {
           </Link>
         ))}
 
-        {superadmin && (
-          <>
-            <div className="border-t border-gray-100 mt-3 pt-3">
-              <p className="text-brand-blue/40 text-[11px] uppercase tracking-wider px-4 mb-2">Superadmin</p>
-              <Link
-                href="/superadmin/admins"
-                className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-[15px] font-medium transition-colors ${
-                  pathname.startsWith("/superadmin")
-                    ? "bg-brand-gradient text-white"
-                    : "text-brand-blue hover:bg-brand-blue/10"
-                }`}
-              >
-                Manajemen Admin
-              </Link>
-            </div>
-          </>
-        )}
+        <div className="border-t border-gray-100 mt-3 pt-3">
+          <p className="text-brand-blue/40 text-[11px] uppercase tracking-wider px-4 mb-2">Admin</p>
+          {ADMIN_NAV.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-[15px] font-medium transition-colors ${
+                isActive(item.href)
+                  ? "bg-brand-gradient text-white"
+                  : "text-brand-blue hover:bg-brand-blue/10"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
       </nav>
 
-      <div className="px-5 pb-6 flex flex-col gap-3">
-        {!superadmin && (
-          <Link href="/superadmin/login" className="text-brand-blue text-[13px] underline">
-            To Superadmin Login
-          </Link>
-        )}
+      <div className="px-5 pb-6">
         <button
           onClick={handleLogout}
           className="w-full h-[64px] bg-brand-gradient text-white rounded-2xl flex items-center justify-between px-5 hover:opacity-90 transition-opacity"
