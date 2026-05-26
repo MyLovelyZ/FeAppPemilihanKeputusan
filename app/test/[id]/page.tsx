@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { getPublicQuiz, submitPublicQuiz, sendResultEmail } from "@/lib/api";
 import type { Quiz, PublicQuizResult } from "@/lib/api";
@@ -123,6 +122,10 @@ export default function TestTakePage() {
   const [submitError, setSubmitError] = useState("");
   const [result, setResult] = useState<{ score: number; data: PublicQuizResult } | null>(null);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   const loadQuiz = () => {
     setLoading(true);
@@ -141,22 +144,39 @@ export default function TestTakePage() {
   const questions = quiz?.questions ?? [];
   const totalQuestions = questions.length;
   const currentQuestion = questions[currentIdx];
-  const answeredCount = Object.keys(answers).length;
-  const allAnswered = answeredCount === totalQuestions && totalQuestions > 0;
 
-  const handleSelect = (questionId: number, optionId: number) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
-    if (currentIdx < totalQuestions - 1) {
-      setTimeout(() => setCurrentIdx((i) => i + 1), 300);
-    }
+  useEffect(() => {
+    const el = badgeRef.current;
+    if (!el || totalQuestions === 0) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setCurrentIdx((c) => e.deltaY > 0 ? Math.min(c + 1, totalQuestions - 1) : Math.max(c - 1, 0));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [totalQuestions]);
+
+  const navigateTo = (idx: number) => {
+    setVisible(false);
+    setTimeout(() => {
+      setCurrentIdx(idx);
+      setVisible(true);
+    }, 200);
   };
 
-  const handleSubmit = async () => {
-    if (!allAnswered) return;
+  const handleSelect = async (questionId: number, optionId: number) => {
+    const updated = { ...answers, [questionId]: optionId };
+    setAnswers(updated);
+
+    if (currentIdx < totalQuestions - 1) {
+      navigateTo(currentIdx + 1);
+      return;
+    }
+
     setSubmitError("");
     setSubmitting(true);
     try {
-      const optionIds = Object.values(answers);
+      const optionIds = Object.values(updated);
       const data = await submitPublicQuiz(quizId, optionIds);
       setResult({ score: data.score, data });
     } catch {
@@ -180,7 +200,7 @@ export default function TestTakePage() {
   if (loading) {
     return (
       <main className="flex flex-col items-center justify-center flex-1 px-8 py-16">
-        <p className="text-brand-blue/50 text-[18px]">Memuat quiz...</p>
+        <p className="text-brand-blue/50 text-[18px]">Memuat soal...</p>
       </main>
     );
   }
@@ -194,78 +214,93 @@ export default function TestTakePage() {
     );
   }
 
-  return (
-    <main className="flex flex-col items-center min-h-screen px-6 py-10 gap-8">
+  if (totalQuestions === 0) {
+    return (
+      <main className="flex flex-col items-center justify-center flex-1 px-8 py-16">
+        <p className="text-brand-blue text-[18px]">Quiz ini belum memiliki pertanyaan.</p>
+      </main>
+    );
+  }
 
-      {totalQuestions === 0 ? (
-        <div className="bg-brand-gradient text-white rounded-2xl p-8 text-center max-w-sm w-full">
-          Quiz ini belum memiliki pertanyaan.
-        </div>
-      ) : (
-        <>
-          {/* Question selector */}
-          <div className="flex items-center gap-2 text-brand-blue text-[16px]">
-            <span>Question</span>
-            <select
-              value={currentIdx}
-              onChange={(e) => setCurrentIdx(Number(e.target.value))}
-              className="bg-brand-blue text-white rounded-lg px-2 py-1 text-[14px] font-bold cursor-pointer outline-none"
-            >
-              {questions.map((_, i) => (
-                <option key={i} value={i}>{i + 1}</option>
-              ))}
-            </select>
-            <span>of {totalQuestions}</span>
+  return (
+    <main className="flex flex-col items-center pt-16 px-8 flex-1">
+
+      {/* Question selector */}
+      <div className="flex items-center gap-3 mb-10 text-[24px] font-bold text-brand-blue select-none">
+        <span>Question</span>
+
+        <div className="relative">
+          {showDropdown && (
+            <div className="fixed inset-0 z-[10]" onClick={() => setShowDropdown(false)} />
+          )}
+
+          <div
+            ref={badgeRef}
+            className="relative z-[11] flex items-stretch bg-brand-gradient rounded-xl cursor-pointer"
+            onClick={() => setShowDropdown((v) => !v)}
+          >
+            <span className="px-4 py-2 text-white font-bold text-[24px] min-w-[44px] text-center">
+              {currentIdx + 1}
+            </span>
+            <span className="w-px bg-white/30 my-[6px]" />
+            <span className="px-3 flex items-center text-white">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
           </div>
 
-          {/* Question text */}
-          <p className="text-brand-blue text-[22px] text-center max-w-xl leading-relaxed">
-            {currentQuestion.question_text}
-          </p>
-
-          {/* Option cards */}
-          <div
-            className={`grid gap-4 w-full max-w-2xl ${
-              currentQuestion.options.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
-            }`}
-          >
-            {currentQuestion.options.map((opt) => {
-              const selected = answers[currentQuestion.id] === opt.id;
-              return (
+          {showDropdown && (
+            <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl overflow-y-auto max-h-52 z-[11] min-w-full">
+              {questions.map((q, i) => (
                 <button
-                  key={opt.id}
-                  onClick={() => handleSelect(currentQuestion.id, opt.id)}
-                  className={`min-h-[200px] rounded-2xl p-6 text-white text-[16px] text-center flex items-center justify-center leading-snug bg-brand-gradient transition-all duration-200 ${
-                    selected
-                      ? "ring-4 ring-brand-blue/50 opacity-100"
-                      : "opacity-60 hover:opacity-80"
+                  key={q.id}
+                  onClick={(e) => { e.stopPropagation(); setShowDropdown(false); navigateTo(i); }}
+                  className={`block w-full px-5 py-2 text-left text-[16px] transition-colors hover:bg-gray-100 ${
+                    i === currentIdx ? "text-brand-blue font-bold" : answers[q.id] !== undefined ? "text-brand-blue/70" : "text-gray-600"
                   }`}
                 >
-                  {opt.option_text}
+                  {i + 1}{answers[q.id] !== undefined && <span className="ml-2 text-xs opacity-60">✓</span>}
                 </button>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-          {/* Submit area */}
-          <div className="flex flex-col items-center gap-3">
-            {submitError && (
-              <p className="text-red-500 text-[14px]">{submitError}</p>
-            )}
-            <button
-              onClick={handleSubmit}
-              disabled={!allAnswered || submitting}
-              className="px-12 py-3.5 bg-brand-gradient text-white text-[16px] font-bold rounded-2xl hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
-            >
-              {submitting
-                ? "Mengirim..."
-                : allAnswered
-                  ? "Lihat Hasil"
-                  : `${answeredCount}/${totalQuestions} terjawab`}
-            </button>
-          </div>
-        </>
-      )}
+        <span>of {totalQuestions}</span>
+      </div>
+
+      {/* Fading content */}
+      <div
+        className="flex flex-col items-center gap-12 w-full transition-opacity duration-200"
+        style={{ opacity: visible ? 1 : 0 }}
+      >
+        <h2 className="text-[24px] text-brand-blue text-center max-w-xl">
+          {currentQuestion.question_text}
+        </h2>
+
+        <div className="flex flex-row flex-wrap justify-center gap-5">
+          {currentQuestion.options.map((opt) => {
+            const selected = answers[currentQuestion.id] === opt.id;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => handleSelect(currentQuestion.id, opt.id)}
+                disabled={submitting}
+                className={`w-[220px] h-[220px] bg-brand-gradient text-white text-[16px] rounded-2xl flex items-center justify-center text-center px-6 transition-all duration-150 hover:opacity-90 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed ${
+                  selected ? "ring-4 ring-white ring-offset-2 ring-offset-brand-bg" : ""
+                }`}
+              >
+                {submitting && selected ? "..." : opt.option_text}
+              </button>
+            );
+          })}
+        </div>
+
+        {submitError && (
+          <p className="text-red-500 text-[14px]">{submitError}</p>
+        )}
+      </div>
     </main>
   );
 }
