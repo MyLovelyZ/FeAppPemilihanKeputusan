@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import AdminSidebar from "@/components/AdminSidebar";
+import SuperadminSidebar from "@/components/SuperadminSidebar";
 import { adminGetQuizzes, adminDeleteQuiz } from "@/lib/api";
 import { getToken, removeToken } from "@/lib/auth";
 import type { Quiz } from "@/lib/api";
@@ -17,11 +17,11 @@ export default function QuizListPage() {
 
   useEffect(() => {
     const token = getToken();
-    if (!token) { router.push("/admin/login"); return; }
+    if (!token) { router.push("/superadmin/login"); return; }
 
     adminGetQuizzes(token)
       .then(setQuizzes)
-      .catch(() => { removeToken(); router.push("/admin/login"); })
+      .catch(() => { removeToken(); router.push("/superadmin/login"); })
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -42,13 +42,13 @@ export default function QuizListPage() {
 
   return (
     <div className="flex min-h-screen">
-      <AdminSidebar />
+      <SuperadminSidebar />
 
       <main className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-brand-blue font-bold text-[28px]">Quiz</h1>
           <Link
-            href="/admin/quizzes/create"
+            href="/superadmin/quizzes/create"
             className="flex items-center gap-2 bg-brand-gradient text-white px-5 py-2.5 rounded-xl text-[15px] hover:opacity-90 transition-opacity"
           >
             Buat Quiz <span className="text-[18px] font-bold">+</span>
@@ -66,7 +66,7 @@ export default function QuizListPage() {
         ) : quizzes.length === 0 ? (
           <div className="text-center py-16 text-brand-blue/40">
             Belum ada quiz.{" "}
-            <Link href="/admin/quizzes/create" className="text-brand-blue underline">Buat quiz pertama.</Link>
+            <Link href="/superadmin/quizzes/create" className="text-brand-blue underline">Buat quiz pertama.</Link>
           </div>
         ) : (
           <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
@@ -83,7 +83,7 @@ export default function QuizListPage() {
                 {quizzes.map((quiz) => (
                   <tr key={quiz.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-brand-blue">
-                      <Link href={`/admin/quizzes/${quiz.id}`} className="hover:opacity-70">
+                      <Link href={`/superadmin/quizzes/${quiz.id}`} className="hover:opacity-70">
                         {quiz.title}
                       </Link>
                     </td>
@@ -96,7 +96,7 @@ export default function QuizListPage() {
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          href={`/admin/quizzes/${quiz.id}`}
+                          href={`/superadmin/quizzes/${quiz.id}`}
                           className="px-3 py-1 text-xs font-medium text-brand-blue bg-brand-blue/10 rounded-lg hover:bg-brand-blue/20 transition-colors"
                         >
                           Edit

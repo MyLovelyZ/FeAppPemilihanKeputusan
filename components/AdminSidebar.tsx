@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getToken, clearAuth, isSuperadmin } from "@/lib/auth";
+import { getToken, clearAuth } from "@/lib/auth";
 import { adminLogout } from "@/lib/api";
 
 const NAV = [
@@ -15,7 +15,6 @@ const NAV = [
 export default function AdminSidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const superadmin = isSuperadmin();
 
   const handleLogout = async () => {
     const token = getToken();
@@ -52,32 +51,9 @@ export default function AdminSidebar() {
             {item.label}
           </Link>
         ))}
-
-        {superadmin && (
-          <>
-            <div className="border-t border-gray-100 mt-3 pt-3">
-              <p className="text-brand-blue/40 text-[11px] uppercase tracking-wider px-4 mb-2">Superadmin</p>
-              <Link
-                href="/superadmin/admins"
-                className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-[15px] font-medium transition-colors ${
-                  pathname.startsWith("/superadmin")
-                    ? "bg-brand-gradient text-white"
-                    : "text-brand-blue hover:bg-brand-blue/10"
-                }`}
-              >
-                Manajemen Admin
-              </Link>
-            </div>
-          </>
-        )}
       </nav>
 
-      <div className="px-5 pb-6 flex flex-col gap-3">
-        {!superadmin && (
-          <Link href="/superadmin/login" className="text-brand-blue text-[13px] underline">
-            To Superadmin Login
-          </Link>
-        )}
+      <div className="px-5 pb-6">
         <button
           onClick={handleLogout}
           className="w-full h-[64px] bg-brand-gradient text-white rounded-2xl flex items-center justify-between px-5 hover:opacity-90 transition-opacity"

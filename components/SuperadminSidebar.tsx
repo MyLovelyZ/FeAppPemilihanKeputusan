@@ -6,14 +6,14 @@ import { getToken, clearAuth } from "@/lib/auth";
 import { adminLogout } from "@/lib/api";
 
 const NAV = [
-  { href: "/superadmin/admins", label: "Manajemen Admin" },
+  { href: "/superadmin", label: "Dashboard" },
+  { href: "/superadmin/quizzes", label: "Quizzes" },
+  { href: "/superadmin/questions", label: "Pertanyaan" },
+  { href: "/superadmin/profile", label: "Profil" },
 ];
 
-const ADMIN_NAV = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/quizzes", label: "Quizzes" },
-  { href: "/admin/questions", label: "Pertanyaan" },
-  { href: "/admin/profile", label: "Profil" },
+const SUPER_NAV = [
+  { href: "/superadmin/admins", label: "Manajemen Admin" },
 ];
 
 export default function SuperadminSidebar() {
@@ -30,7 +30,7 @@ export default function SuperadminSidebar() {
   };
 
   const isActive = (href: string) => {
-    if (href === "/admin") return pathname === "/admin";
+    if (href === "/superadmin") return pathname === "/superadmin";
     return pathname.startsWith(href);
   };
 
@@ -42,7 +42,6 @@ export default function SuperadminSidebar() {
       </div>
 
       <nav className="px-5 py-5 flex-1 flex flex-col gap-1">
-        <p className="text-brand-blue/40 text-[11px] uppercase tracking-wider px-4 mb-1">Superadmin</p>
         {NAV.map((item) => (
           <Link
             key={item.href}
@@ -58,8 +57,8 @@ export default function SuperadminSidebar() {
         ))}
 
         <div className="border-t border-gray-100 mt-3 pt-3">
-          <p className="text-brand-blue/40 text-[11px] uppercase tracking-wider px-4 mb-2">Admin</p>
-          {ADMIN_NAV.map((item) => (
+          <p className="text-brand-blue/40 text-[11px] uppercase tracking-wider px-4 mb-2">Superadmin</p>
+          {SUPER_NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}

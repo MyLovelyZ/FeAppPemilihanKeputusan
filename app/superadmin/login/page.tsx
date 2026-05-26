@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { adminLogin } from "@/lib/api";
-import { setToken, setUser } from "@/lib/auth";
+import { setToken, setUser, clearAuth, isSuperadmin } from "@/lib/auth";
 
 export default function SuperadminLoginPage() {
   const router = useRouter();
@@ -22,11 +22,12 @@ export default function SuperadminLoginPage() {
       setToken(token);
       setUser({ id: user.id, name: user.name, email: user.email, role: user.role });
 
-      if (user.role === "superadmin") {
-        router.push("/superadmin/admins");
-      } else {
-        router.push("/admin");
+      if (!isSuperadmin()) {
+        clearAuth();
+        setError("Akun ini bukan superadmin.");
+        return;
       }
+      router.push("/superadmin");
     } catch {
       setError("Kredensial akun salah atau belum terdaftar.");
     } finally {

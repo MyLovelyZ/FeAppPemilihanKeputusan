@@ -1,17 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SuperadminSidebar from "@/components/SuperadminSidebar";
-import { superadminCreateAdmin } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import Alert from "@/components/Alert";
+import { superadminCreateAdmin, extractErrorMessage } from "@/lib/api";
+import { getToken, isSuperadmin } from "@/lib/auth";
 
 export default function AdminCreatePage() {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "", password_confirmation: "" });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!getToken()) { router.push("/superadmin/login"); return; }
+    if (!isSuperadmin()) { router.push("/superadmin/login"); }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,8 +28,8 @@ export default function AdminCreatePage() {
     try {
       await superadminCreateAdmin(token, form);
       router.push("/superadmin/admins");
-    } catch {
-      setError("Gagal membuat admin. Periksa data yang dimasukkan.");
+    } catch (err) {
+      setError(extractErrorMessage(err, "Gagal membuat admin."));
       setSaving(false);
     }
   };
@@ -33,23 +39,19 @@ export default function AdminCreatePage() {
       <SuperadminSidebar />
 
       <main className="flex-1 p-8">
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/superadmin/admins" className="text-brand-blue/50 text-[14px] hover:text-brand-blue">← Kembali</Link>
-          <h1 className="text-brand-blue font-bold text-[28px]">Tambah Admin Baru</h1>
-        </div>
+        <div className="max-w-md space-y-4">
+          <div className="flex items-center gap-3">
+            <Link href="/superadmin/admins" className="text-brand-blue/50 text-[14px] hover:text-brand-blue">← Kembali</Link>
+            <h1 className="text-brand-blue font-bold text-[28px]">Tambah Admin Baru</h1>
+          </div>
 
-        <div className="max-w-md">
-          <div className="bg-white border border-gray-100 rounded-2xl p-6">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-              {error && (
-                <div className="bg-red-50 border-l-4 border-red-500 rounded-xl px-4 py-3">
-                  <p className="text-red-600 text-[14px]">{error}</p>
-                </div>
-              )}
+              <Alert type="error" message={error} />
 
               {(["name", "email", "password", "password_confirmation"] as const).map((field) => (
                 <div key={field} className="flex flex-col gap-1.5">
-                  <label className="text-[13px] font-medium text-brand-blue capitalize">
+                  <label className="text-[13px] font-medium text-brand-blue">
                     {field === "name" ? "Nama" : field === "email" ? "Email" : field === "password" ? "Password" : "Konfirmasi Password"}
                   </label>
                   <input

@@ -64,7 +64,7 @@ export type AdminUser = {
   id: number;
   name: string;
   email: string;
-  role: string;
+  role: unknown;
   banned_at?: string | null;
 };
 
@@ -94,6 +94,27 @@ export type EmailPayload = {
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+  constructor(status: number, body: unknown) {
+    super(`${status}`);
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    const body = err.body as { errors?: Record<string, string[]>; message?: string } | undefined;
+    if (body?.errors) {
+      return Object.values(body.errors).flat().join(" ");
+    }
+    if (body?.message) return body.message;
+  }
+  return fallback;
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const { headers: extra, ...rest } = init ?? {};
   const res = await fetch(`${BASE}${path}`, {
@@ -105,8 +126,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     ...rest,
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`${res.status}: ${text}`);
+    let body: unknown;
+    try { body = await res.json(); }
+    catch { body = await res.text().catch(() => res.statusText); }
+    throw new ApiError(res.status, body);
   }
   return res.json() as Promise<T>;
 }

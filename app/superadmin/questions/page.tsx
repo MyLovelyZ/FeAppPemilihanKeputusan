@@ -3,38 +3,38 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import AdminSidebar from "@/components/AdminSidebar";
-import { adminGetQuizzes, adminDeleteQuiz } from "@/lib/api";
+import SuperadminSidebar from "@/components/SuperadminSidebar";
+import { adminGetQuestions, adminDeleteQuestion } from "@/lib/api";
 import { getToken, removeToken } from "@/lib/auth";
-import type { Quiz } from "@/lib/api";
+import type { Question } from "@/lib/api";
 
-export default function QuizListPage() {
+export default function QuestionListPage() {
   const router = useRouter();
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     const token = getToken();
-    if (!token) { router.push("/admin/login"); return; }
+    if (!token) { router.push("/superadmin/login"); return; }
 
-    adminGetQuizzes(token)
-      .then(setQuizzes)
-      .catch(() => { removeToken(); router.push("/admin/login"); })
+    adminGetQuestions(token)
+      .then(setQuestions)
+      .catch(() => { removeToken(); router.push("/superadmin/login"); })
       .finally(() => setLoading(false));
   }, [router]);
 
-  const handleDelete = async (quiz: Quiz) => {
-    if (!window.confirm(`Hapus quiz "${quiz.title}"? Semua pertanyaan dan opsinya juga akan dihapus.`)) return;
+  const handleDelete = async (q: Question) => {
+    if (!window.confirm("Hapus pertanyaan ini beserta semua opsi jawabannya?")) return;
     const token = getToken();
     if (!token) return;
-    setDeletingId(quiz.id);
+    setDeletingId(q.id);
     try {
-      await adminDeleteQuiz(token, quiz.id);
-      setQuizzes((prev) => prev.filter((q) => q.id !== quiz.id));
+      await adminDeleteQuestion(token, q.id);
+      setQuestions((prev) => prev.filter((item) => item.id !== q.id));
     } catch {
-      setError("Gagal menghapus quiz.");
+      setError("Gagal menghapus pertanyaan.");
     } finally {
       setDeletingId(null);
     }
@@ -42,16 +42,16 @@ export default function QuizListPage() {
 
   return (
     <div className="flex min-h-screen">
-      <AdminSidebar />
+      <SuperadminSidebar />
 
       <main className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-brand-blue font-bold text-[28px]">Quiz</h1>
+          <h1 className="text-brand-blue font-bold text-[28px]">Pertanyaan</h1>
           <Link
-            href="/admin/quizzes/create"
+            href="/superadmin/questions/create"
             className="flex items-center gap-2 bg-brand-gradient text-white px-5 py-2.5 rounded-xl text-[15px] hover:opacity-90 transition-opacity"
           >
-            Buat Quiz <span className="text-[18px] font-bold">+</span>
+            Buat Pertanyaan <span className="text-[18px] font-bold">+</span>
           </Link>
         </div>
 
@@ -63,50 +63,44 @@ export default function QuizListPage() {
 
         {loading ? (
           <p className="text-brand-blue/40">Memuat...</p>
-        ) : quizzes.length === 0 ? (
+        ) : questions.length === 0 ? (
           <div className="text-center py-16 text-brand-blue/40">
-            Belum ada quiz.{" "}
-            <Link href="/admin/quizzes/create" className="text-brand-blue underline">Buat quiz pertama.</Link>
+            Belum ada pertanyaan.{" "}
+            <Link href="/superadmin/questions/create" className="text-brand-blue underline">Buat pertanyaan pertama.</Link>
           </div>
         ) : (
           <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
             <table className="w-full text-[14px]">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-5 py-3 font-medium text-brand-blue/60">Judul</th>
-                  <th className="text-left px-5 py-3 font-medium text-brand-blue/60 hidden lg:table-cell">Dibuat oleh</th>
-                  <th className="text-left px-5 py-3 font-medium text-brand-blue/60 hidden md:table-cell">Deskripsi</th>
+                  <th className="text-left px-5 py-3 font-medium text-brand-blue/60">Pertanyaan</th>
+                  <th className="text-left px-5 py-3 font-medium text-brand-blue/60 hidden md:table-cell">Quiz</th>
                   <th className="text-right px-5 py-3 font-medium text-brand-blue/60">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {quizzes.map((quiz) => (
-                  <tr key={quiz.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-brand-blue">
-                      <Link href={`/admin/quizzes/${quiz.id}`} className="hover:opacity-70">
-                        {quiz.title}
-                      </Link>
+                {questions.map((q) => (
+                  <tr key={q.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3 text-brand-blue max-w-sm">
+                      <p className="truncate">{q.question_text}</p>
                     </td>
-                    <td className="px-5 py-3 text-brand-blue/50 hidden lg:table-cell">
-                      {quiz.author?.name ?? "—"}
-                    </td>
-                    <td className="px-5 py-3 text-brand-blue/50 hidden md:table-cell max-w-xs truncate">
-                      {quiz.description || "—"}
+                    <td className="px-5 py-3 text-brand-blue/50 hidden md:table-cell">
+                      {q.quiz?.title || "—"}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          href={`/admin/quizzes/${quiz.id}`}
+                          href={`/superadmin/questions/${q.id}/edit`}
                           className="px-3 py-1 text-xs font-medium text-brand-blue bg-brand-blue/10 rounded-lg hover:bg-brand-blue/20 transition-colors"
                         >
                           Edit
                         </Link>
                         <button
-                          onClick={() => handleDelete(quiz)}
-                          disabled={deletingId === quiz.id}
+                          onClick={() => handleDelete(q)}
+                          disabled={deletingId === q.id}
                           className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
                         >
-                          {deletingId === quiz.id ? "..." : "Hapus"}
+                          {deletingId === q.id ? "..." : "Hapus"}
                         </button>
                       </div>
                     </td>

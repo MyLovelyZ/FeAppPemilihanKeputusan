@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SuperadminSidebar from "@/components/SuperadminSidebar";
-import { superadminGetAdmins, superadminToggleBan, superadminDeleteAdmin } from "@/lib/api";
-import { getToken, clearAuth } from "@/lib/auth";
+import Alert from "@/components/Alert";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { superadminGetAdmins, superadminToggleBan, superadminDeleteAdmin, extractErrorMessage } from "@/lib/api";
+import { getToken, isSuperadmin } from "@/lib/auth";
 import type { AdminEntry } from "@/lib/api";
 
 function StatusBadge({ bannedAt }: { bannedAt: string | null }) {
@@ -22,53 +24,79 @@ export default function AdminListPage() {
   const [admins, setAdmins] = useState<AdminEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [banningId, setBanningId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [banTarget, setBanTarget] = useState<AdminEntry | null>(null);
+  const [banLoading, setBanLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminEntry | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const token = getToken();
     if (!token) { router.push("/superadmin/login"); return; }
+    if (!isSuperadmin()) { router.push("/superadmin/login"); return; }
 
     superadminGetAdmins(token)
       .then(setAdmins)
-      .catch(() => { clearAuth(); router.push("/superadmin/login"); })
+      .catch((err) => setError(extractErrorMessage(err, "Gagal memuat daftar admin.")))
       .finally(() => setLoading(false));
   }, [router]);
 
-  const handleBan = async (admin: AdminEntry) => {
-    const action = admin.banned_at ? "unban" : "ban";
-    if (!window.confirm(`${action === "ban" ? "Ban" : "Unban"} admin "${admin.name}"?`)) return;
+  const handleBan = async () => {
+    if (!banTarget) return;
     const token = getToken();
     if (!token) return;
-    setBanningId(admin.id);
+    setBanLoading(true);
     try {
-      const updated = await superadminToggleBan(token, admin.id);
+      const updated = await superadminToggleBan(token, banTarget.id);
       setAdmins((prev) => prev.map((a) => a.id === updated.id ? { ...a, banned_at: updated.banned_at } : a));
-    } catch {
-      setError("Gagal mengubah status ban.");
+      setBanTarget(null);
+    } catch (err) {
+      setError(extractErrorMessage(err, "Gagal mengubah status ban."));
     } finally {
-      setBanningId(null);
+      setBanLoading(false);
     }
   };
 
-  const handleDelete = async (admin: AdminEntry) => {
-    if (!window.confirm(`Hapus akun admin "${admin.name}" secara permanen?`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     const token = getToken();
     if (!token) return;
-    setDeletingId(admin.id);
+    setDeleteLoading(true);
     try {
-      await superadminDeleteAdmin(token, admin.id);
-      setAdmins((prev) => prev.filter((a) => a.id !== admin.id));
-    } catch {
-      setError("Gagal menghapus admin.");
+      await superadminDeleteAdmin(token, deleteTarget.id);
+      setAdmins((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(extractErrorMessage(err, "Gagal menghapus admin."));
     } finally {
-      setDeletingId(null);
+      setDeleteLoading(false);
     }
   };
 
   return (
     <div className="flex min-h-screen">
       <SuperadminSidebar />
+
+      <ConfirmDialog
+        open={!!banTarget}
+        title={banTarget?.banned_at ? "Unban Admin" : "Ban Admin"}
+        message={banTarget?.banned_at
+          ? `Admin "${banTarget?.name}" akan di-unban dan dapat login kembali.`
+          : `Admin "${banTarget?.name}" akan di-ban. Semua token aktifnya akan dicabut.`}
+        confirmLabel={banTarget?.banned_at ? "Unban" : "Ban"}
+        onConfirm={handleBan}
+        onCancel={() => setBanTarget(null)}
+        loading={banLoading}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Hapus Admin"
+        message={`Akun admin "${deleteTarget?.name}" akan dihapus permanen.`}
+        confirmLabel="Hapus"
+        tone="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        loading={deleteLoading}
+      />
 
       <main className="flex-1 p-8">
         <div className="flex items-center justify-between mb-8">
@@ -81,11 +109,9 @@ export default function AdminListPage() {
           </Link>
         </div>
 
-        {error && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-500 rounded-xl px-4 py-3">
-            <p className="text-red-600 text-[14px]">{error}</p>
-          </div>
-        )}
+        <div className="mb-4">
+          <Alert type="error" message={error} />
+        </div>
 
         {loading ? (
           <p className="text-brand-blue/40">Memuat...</p>
@@ -126,22 +152,20 @@ export default function AdminListPage() {
                           Detail
                         </Link>
                         <button
-                          onClick={() => handleBan(admin)}
-                          disabled={banningId === admin.id}
-                          className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 ${
+                          onClick={() => setBanTarget(admin)}
+                          className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                             admin.banned_at
                               ? "text-green-700 bg-green-50 hover:bg-green-100"
                               : "text-orange-600 bg-orange-50 hover:bg-orange-100"
                           }`}
                         >
-                          {banningId === admin.id ? "..." : admin.banned_at ? "Unban" : "Ban"}
+                          {admin.banned_at ? "Unban" : "Ban"}
                         </button>
                         <button
-                          onClick={() => handleDelete(admin)}
-                          disabled={deletingId === admin.id}
-                          className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                          onClick={() => setDeleteTarget(admin)}
+                          className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
                         >
-                          {deletingId === admin.id ? "..." : "Hapus"}
+                          Hapus
                         </button>
                       </div>
                     </td>
